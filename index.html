@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>CorDex Editor</title>
+<meta name="theme-color" content="#0b0f14">
+<meta name="description" content="CorDex Editor — a mobile-first code editor and executor.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<!-- CodeMirror 5 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/simplescrollbars.min.css">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="default">
+
+<!-- ===== TOP BAR ===== -->
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="brand-mark">◆</span>
+    <span class="brand-name">CorDex<span class="brand-accent">Editor</span></span>
+  </div>
+  <div class="topbar-right" id="topbarContext">
+    <!-- breadcrumb / contextual title injected here -->
+  </div>
+</header>
+
+<!-- ===== APP BODY ===== -->
+<main id="app">
+
+  <!-- ---- PROJECTS TAB ---- -->
+  <section class="tab-panel" id="panel-projects" data-panel="projects">
+    <div class="panel-head">
+      <div>
+        <h1>Projects</h1>
+        <p class="panel-sub" id="projectsCount">No projects yet</p>
+      </div>
+      <button class="btn-fab-inline" id="btnNewProject" aria-label="New project">+</button>
+    </div>
+    <div class="list-scroll" id="projectsList"></div>
+    <div class="empty-state" id="projectsEmpty">
+      <div class="empty-glyph">⌁</div>
+      <h3>No projects yet</h3>
+      <p>Start something new — a website, a script, a query. Tap + to create your first project.</p>
+      <button class="btn-primary" id="btnNewProjectEmpty">Create a project</button>
+    </div>
+  </section>
+
+  <!-- ---- FILES TAB ---- -->
+  <section class="tab-panel" id="panel-files" data-panel="files">
+    <div class="panel-head">
+      <div>
+        <h1 id="filesProjectName">Files</h1>
+        <p class="panel-sub" id="filesCount">Select a project</p>
+      </div>
+      <button class="btn-fab-inline" id="btnNewFile" aria-label="New file">+</button>
+    </div>
+    <div class="list-scroll" id="filesList"></div>
+    <div class="empty-state" id="filesEmpty">
+      <div class="empty-glyph">⌗</div>
+      <h3>No files here</h3>
+      <p>Add index.html, style.css, script.js, main.py — whatever this project needs.</p>
+      <button class="btn-primary" id="btnNewFileEmpty">Create a file</button>
+    </div>
+    <div class="empty-state" id="filesNoProject">
+      <div class="empty-glyph">⌁</div>
+      <h3>No project open</h3>
+      <p>Head to the Projects tab and pick one to see its files.</p>
+      <button class="btn-primary" id="btnGoProjects">Go to Projects</button>
+    </div>
+  </section>
+
+  <!-- ---- EDITOR TAB ---- -->
+  <section class="tab-panel" id="panel-editor" data-panel="editor">
+    <div class="editor-topbar">
+      <div class="file-switch" id="fileSwitch">
+        <button class="file-switch-btn" id="fileSwitchBtn">
+          <span class="fs-icon" id="fsIcon">◌</span>
+          <span class="fs-name" id="fsName">No file open</span>
+          <span class="fs-dot" id="fsDirty" hidden></span>
+          <span class="fs-chevron">▾</span>
+        </button>
+        <div class="file-switch-menu" id="fileSwitchMenu" hidden></div>
+      </div>
+      <button class="btn-run" id="btnRun" disabled>
+        <span class="run-icon">▶</span><span class="run-label">Run</span>
+      </button>
+    </div>
+    <div class="editor-wrap" id="editorWrap">
+      <div id="cmHost"></div>
+      <div class="editor-empty" id="editorEmpty">
+        <div class="empty-glyph">✎</div>
+        <h3>Nothing open</h3>
+        <p>Pick a file from the Files tab, or use the switcher above.</p>
+      </div>
+    </div>
+    <div class="editor-statusbar" id="editorStatus">
+      <span id="statusLang">—</span>
+      <span id="statusCursor">Ln 1, Col 1</span>
+      <span id="statusSaved">Saved</span>
+    </div>
+  </section>
+
+  <!-- ---- PREVIEW TAB ---- -->
+  <section class="tab-panel" id="panel-preview" data-panel="preview">
+    <div class="panel-head panel-head-tight">
+      <div>
+        <h1>Preview</h1>
+        <p class="panel-sub" id="previewSub">Run something to see it here</p>
+      </div>
+      <div class="preview-actions">
+        <button class="btn-icon" id="btnPreviewRefresh" aria-label="Refresh" title="Refresh">⟳</button>
+      </div>
+    </div>
+    <div class="preview-body" id="previewBody">
+      <div class="empty-state" id="previewEmpty">
+        <div class="empty-glyph">▣</div>
+        <h3>No output yet</h3>
+        <p>Open a file in the Editor tab and hit Run.</p>
+      </div>
+      <iframe id="previewFrame" title="Preview" hidden sandbox="allow-scripts allow-modals allow-forms allow-popups"></iframe>
+      <div class="console-panel" id="consolePanel" hidden>
+        <div class="console-head">
+          <span>Console</span>
+          <button class="btn-icon-sm" id="btnClearConsole">Clear</button>
+        </div>
+        <div class="console-body" id="consoleBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---- SETTINGS TAB ---- -->
+  <section class="tab-panel" id="panel-settings" data-panel="settings">
+    <div class="panel-head">
+      <div>
+        <h1>Settings</h1>
+        <p class="panel-sub">Make it yours</p>
+      </div>
+    </div>
+    <div class="settings-scroll">
+      <div class="settings-group">
+        <h3 class="settings-group-title">Theme</h3>
+        <div class="segmented" id="themeSegmented">
+          <button class="segmented-btn" data-theme-choice="light">Light</button>
+          <button class="segmented-btn" data-theme-choice="default">Default</button>
+          <button class="segmented-btn" data-theme-choice="dark">Dark</button>
+        </div>
+        <p class="settings-hint">Default is CorDex's own neon-on-ink look. Light and Dark are clean, distraction-free editor themes.</p>
+      </div>
+
+      <div class="settings-group">
+        <h3 class="settings-group-title">Editor</h3>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-title">Auto-close brackets &amp; quotes</div>
+            <div class="settings-row-sub">Automatically pairs (), [], {}, "", ''</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggleAutoClose" checked>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-title">Font size</div>
+            <div class="settings-row-sub">Editor text size</div>
+          </div>
+          <div class="stepper" id="fontStepper">
+            <button class="stepper-btn" data-step="-1">–</button>
+            <span class="stepper-val" id="fontSizeVal">14</span>
+            <button class="stepper-btn" data-step="1">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <h3 class="settings-group-title">Data</h3>
+        <p class="settings-hint">Everything is stored locally in this browser. Nothing leaves your device.</p>
+        <button class="btn-danger-outline" id="btnExportData">Export all projects (.json)</button>
+        <button class="btn-danger" id="btnDeleteAll">Delete all projects</button>
+      </div>
+
+      <div class="settings-group about-group">
+        <h3 class="settings-group-title">About</h3>
+        <p class="settings-hint">CorDex Editor — write, run, and preview HTML, CSS, JavaScript, Python, SQL, C#, Kotlin and Java, right from your phone.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="nav-btn active" data-tab="projects">
+    <span class="nav-icon">▤</span><span class="nav-label">Projects</span>
+  </button>
+  <button class="nav-btn" data-tab="files">
+    <span class="nav-icon">⌗</span><span class="nav-label">Files</span>
+  </button>
+  <button class="nav-btn" data-tab="editor">
+    <span class="nav-icon">✎</span><span class="nav-label">Editor</span>
+  </button>
+  <button class="nav-btn" data-tab="preview">
+    <span class="nav-icon">▣</span><span class="nav-label">Preview</span>
+  </button>
+  <button class="nav-btn" data-tab="settings">
+    <span class="nav-icon">⚙</span><span class="nav-label">Settings</span>
+  </button>
+</nav>
+
+<!-- ===== MODAL / SHEET ROOT ===== -->
+<div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-handle"></div>
+  <div class="sheet-content" id="sheetContent"></div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<!-- ===== CodeMirror core + modes ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/simplescrollbars.min.js"></script>
+
+<script src="app.js"></script>
+</body>
+</html>
